@@ -1,0 +1,74 @@
+import io
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+from google.colab import files
+upload = files.upload()
+dataset = pd.read_csv(io.BytesIO(upload['Exchange_Rate_Report_2022.csv']))
+print(dataset)
+
+print(dataset.head())
+# Step 1: Define a function to plot the exchange rate trends
+def plot_exchange_rate_trend(data, currency_pair, duration):
+    # Filter data for the selected currency pair
+    currency_columns = [col for col in data.columns if currency_pair in col]
+    currency_data = data[['Date'] + currency_columns]
+
+    # Convert 'Date' to datetime format
+    currency_data['Date'] = pd.to_datetime(currency_data['Date'])
+
+    # Set 'Date' as the index
+    currency_data.set_index('Date', inplace=True)
+
+    # Resample data based on the selected duration
+    if duration == 'weekly':
+        resampled_data = currency_data.resample('W').mean()
+    elif duration == 'monthly':
+        resampled_data = currency_data.resample('M').mean()
+    else:
+        # Assume yearly as default
+        resampled_data = currency_data.resample('Y').mean()
+
+    # Plot the exchange rate trends
+    plt.figure(figsize=(12, 6))
+    for currency_col in currency_columns:
+        plt.plot(resampled_data.index, resampled_data[currency_col], label=currency_col)
+
+    plt.title(f'Exchange Rate Trends - {currency_pair}')
+    plt.xlabel('Date')
+    plt.ylabel(f'{currency_pair} to USD')
+    plt.legend()
+    plt.show()
+
+# Step 2: Define a function to find the date of highest and lowest exchange rates
+def find_peak_dates(data, currency_pair):
+    currency_columns = [col for col in data.columns if currency_pair in col]
+    currency_data = data[['Date'] + currency_columns]
+
+    # Check if the dataframe is empty
+    if currency_data.empty:
+        return None, None
+
+    # Find the date with the highest exchange rate
+    max_date = currency_data.loc[currency_data[currency_columns].idxmax().idxmax()]['Date']
+
+    # Find the date with the lowest exchange rate
+    min_date = currency_data.loc[currency_data[currency_columns].idxmin().idxmin()]['Date']
+
+    return max_date, min_date
+
+# Step 3: Get user input for currency pair and duration
+currency_pair = input('Enter the currency pair (e.g., INR): ')
+duration = input('Enter the duration (weekly/monthly/yearly): ')
+
+# Step 4: Plot exchange rate trends
+plot_exchange_rate_trend(dataset, f'USD/{currency_pair}', duration)
+
+# Step 5: Find and display the date of highest and lowest exchange rates
+max_date, min_date = find_peak_dates(dataset, f'USD/{currency_pair}')
+
+if max_date is not None and min_date is not None:
+    print(f'Date of Highest Exchange Rate: {max_date}, Rate: {dataset.loc[dataset["Date"]==max_date][f"USD/{currency_pair}"].values[0]}')
+    print(f'Date of Lowest Exchange Rate: {min_date}, Rate: {dataset.loc[dataset["Date"]==min_date][f"USD/{currency_pair}"].values[0]}')
+else:
+    print("Dataset is empty or contains NaN values.")
